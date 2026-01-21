@@ -1,0 +1,8 @@
+:root { --card-radius: 16px; }
+body { background: #f6f7fb; }
+.card { border-radius: var(--card-radius); }
+.table thead th { position: sticky; top: 0; z-index: 1; }
+.stat { background:#fff; border:1px solid rgba(0,0,0,.08); border-radius: 14px; padding: 12px; }
+.stat-label { font-size: .78rem; color: #6c757d; }
+.stat-value { font-size: 1.35rem; font-weight: 700; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; }
