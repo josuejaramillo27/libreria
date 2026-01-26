@@ -494,24 +494,20 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
   const date = document.getElementById("quoteDate").value || todayISO();
   const notes = document.getElementById("quoteNotes").value || "";
 
-// --- Encabezado: datos izquierda centrados con el logo (logo fijo) ---
+  // --- Encabezado: datos izquierda, logo derecha ---
+// --- Encabezado: datos izquierda, logo derecha ---
+// --- Encabezado: centrar DATOS respecto al logo (logo fijo) ---
 const leftX = 14;
 
-// Tamaño y posición del logo (NO lo moveremos)
-const logoW = 40;
-const logoH = 40;
-const logoX = 140;
-const logoY = 12; // <-- puedes ajustar solo este si quieres más arriba/abajo, pero NO cambiaremos en el centrado
-
-// Centro vertical del logo
-const logoCenterY = logoY + (logoH / 2);
-
-// Bloque de datos: 3 líneas
+// Altura del bloque de datos (3 líneas)
 const lineGap = 6;
 const dataLines = 3;
 const dataBlockHeight = lineGap * (dataLines - 1);
 
-// Calcula el Y inicial del texto para que quede centrado con el logo
+// Centro vertical del logo (NO se mueve)
+const logoCenterY = logoY + (logoH / 2);
+
+// Calcular el Y inicial del texto para centrarlo con el logo
 const textTopY = logoCenterY - (dataBlockHeight / 2);
 
 doc.setFontSize(11);
@@ -524,19 +520,30 @@ const clientLine = client
 
 doc.text(`Cliente: ${clientLine}`, leftX, textTopY + (lineGap * 2), { maxWidth: 110 });
 
-// --- Logo a la derecha ---
+
+// Calcular altura del bloque de datos (3 líneas)
+const dataBlockTop = topY;           // primera línea
+const dataBlockBottom = topY + 12;   // tercera línea
+const dataBlockHeight = dataBlockBottom - dataBlockTop;
+
+// Tamaño del logo (más cuadrado)
+const logoW = 40;
+const logoH = 40;
+
+// Logo centrado verticalmente con el bloque de datos
+const logoX = 140; // mueve a la derecha/izquierda si quieres
+const logoY = dataBlockTop + (dataBlockHeight - logoH) / 2;
+
 try {
   const logoDataUrl = await fetch("assets/logo.jpg")
-    .then(r => r.blob())
-    .then(blob => new Promise((resolve) => {
+    .then(r=>r.blob())
+    .then(blob => new Promise((resolve)=>{
       const fr = new FileReader();
-      fr.onload = () => resolve(fr.result);
+      fr.onload = ()=> resolve(fr.result);
       fr.readAsDataURL(blob);
     }));
-
   doc.addImage(logoDataUrl, "JPEG", logoX, logoY, logoW, logoH);
 } catch (e) {}
-
 
 
   // Logo a la derecha (assets/logo.jpg)
