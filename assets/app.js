@@ -515,7 +515,7 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
         fr.readAsDataURL(blob);
       }));
     // x: 140 aprox para A4 portrait (210mm). Ajuste: ancho 55, alto 22
-    doc.addImage(logoDataUrl, "JPEG", 140, 10, 35, 35);
+    doc.addImage(logoDataUrl, "JPEG", 140, 10, 55, 22);
   } catch (e) {
     // si falla, no pasa nada
   }
