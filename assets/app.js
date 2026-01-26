@@ -25,18 +25,6 @@ function safeNum(x) {
   const n = Number(x);
   return Number.isFinite(n) ? n : 0;
 }
-
-function formatPriceInput(n) {
-  const x = Number(n);
-  return Number.isFinite(x) ? x.toFixed(2) : "0.00";
-}
-function parseDecimalInput(s) {
-  // Acepta "3.5" o "3,5"
-  const t = String(s ?? "").trim().replace(",", ".");
-  const n = parseFloat(t);
-  return Number.isFinite(n) ? n : 0;
-}
-
 function todayISO() {
   const d = new Date();
   const pad = (n)=> String(n).padStart(2,"0");
@@ -365,7 +353,7 @@ function renderQuote() {
         <td class="mono">${it.codigo}</td>
         <td>${escapeHtml(it.descripcion)}</td>
         <td class="text-end"><input class="form-control form-control-sm text-end" type="number" step="1" min="1" data-idx="${idx}" data-k="qty" value="${it.qty}"></td>
-        <td class="text-end"><input class="form-control form-control-sm text-end" type="text" inputmode="decimal" data-idx="${idx}" data-k="unitPrice" value="${formatPriceInput(it.unitPrice)}"></td>
+        <td class="text-end"><input class="form-control form-control-sm text-end" type="number" step="0.01" min="0" data-idx="${idx}" data-k="unitPrice" value="${it.unitPrice}"></td>
         <td class="text-end">${money(subtotal)}</td>
         <td class="text-end"><button class="btn btn-outline-danger btn-sm" data-act="rm-quote" data-idx="${idx}">✕</button></td>
       </tr>
@@ -381,31 +369,19 @@ function updateQuoteTotal() {
   saveToLocalStorage();
 }
 
-
-document.getElementById("quoteTbody").addEventListener("keydown", (e)=>{
-  const inp = e.target.closest("input[data-idx][data-k]");
+document.getElementById("quoteTbody").addEventListener("input", (e)=>{
+  const inp = e.target.closest("input[data-idx]");
   if (!inp) return;
-
   const idx = Number(inp.dataset.idx);
   const k = inp.dataset.k;
   if (!state.quote.items[idx]) return;
-
-  // Confirmar precio unitario SOLO con ENTER
-  if (k === "unitPrice" && e.key === "Enter") {
-    e.preventDefault();
-
-    // 1) Guardar precio en el item
-    state.quote.items[idx].unitPrice = parseDecimalInput(inp.value);
-
-    // 2) Re-render para recalcular subtotal y total
-    renderQuote();
-
-    // 3) (Opcional) Quitar foco al presionar Enter
-    const refocus = document.querySelector(`input[data-idx="${idx}"][data-k="unitPrice"]`);
-    if (refocus) refocus.blur();
-
-    return;
+  state.quote.items[idx][k] = (k==="qty") ? Math.max(1, Number(inp.value||1)) : Number(inp.value||0);
+  // auto-tier pricing if qty changed and product has mayor price (unless user overwrote? keep simple: apply rule on qty change only if k=qty)
+  if (k==="qty") {
+    const prod = state.products.find(p=>p.codigo===state.quote.items[idx].codigo);
+    if (prod) state.quote.items[idx].unitPrice = calcUnitPrice(prod, state.quote.items[idx].qty);
   }
+  renderQuote();
 });
 
 document.getElementById("view-cotizacion").addEventListener("click", (e)=>{
@@ -488,9 +464,7 @@ document.getElementById("quoteClientSearch").addEventListener("keydown", (e)=>{
 });
 
 /* ---------------- Export Quotation: PDF / Excel ---------------- */
-
-
-document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=>{
+document.getElementById("btnExportQuotePdf").addEventListener("click", ()=>{
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
@@ -499,31 +473,15 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
   const date = document.getElementById("quoteDate").value || todayISO();
   const notes = document.getElementById("quoteNotes").value || "";
 
-  // --- Encabezado: datos izquierda, logo derecha ---
-  const leftX = 14;
-  const topY = 14;
+  doc.setFontSize(14);
+  doc.text("D'Kolor - Cotización de útiles escolares", 14, 16);
 
-  doc.setFontSize(11);
-  doc.text(`N°: ${number}`, leftX, topY);
-  doc.text(`Fecha: ${date}`, leftX, topY + 6);
+  doc.setFontSize(10);
+  doc.text(`N°: ${number}`, 14, 24);
+  doc.text(`Fecha: ${date}`, 14, 30);
 
   const clientLine = client ? `${client.codigo} • ${client.cliente} • DNI: ${client.dni || "—"}` : "—";
-  doc.text(`Cliente: ${clientLine}`, leftX, topY + 12);
-
-  // Logo a la derecha (assets/logo.jpg)
-  try {
-    const logoDataUrl = await fetch("assets/logo.jpg")
-      .then(r=>r.blob())
-      .then(blob => new Promise((resolve)=>{
-        const fr = new FileReader();
-        fr.onload = ()=> resolve(fr.result);
-        fr.readAsDataURL(blob);
-      }));
-    // x: 140 aprox para A4 portrait (210mm). Ajuste: ancho 55, alto 22
-    doc.addImage(logoDataUrl, "JPEG", 140, 12, 30, 30);
-  } catch (e) {
-    // si falla, no pasa nada
-  }
+  doc.text(`Cliente: ${clientLine}`, 14, 36);
 
   const rows = state.quote.items.map((it)=>[
     it.codigo,
@@ -533,32 +491,28 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
     (safeNum(it.qty)*safeNum(it.unitPrice)).toFixed(2)
   ]);
 
-  const total = state.quote.items.reduce((acc,it)=> acc + safeNum(it.qty)*safeNum(it.unitPrice), 0);
-
   doc.autoTable({
-    startY: 36,
+    startY: 42,
     head: [["Código","Producto","Cant.","P. Unit (S/)","Subtotal (S/)"]],
     body: rows,
-    foot: [["", "", "", "TOTAL (S/)", total.toFixed(2)]],
     styles: { fontSize: 9 },
-    headStyles: { fillColor: [30,30,30] },
-    footStyles: { fillColor: [245,245,245], textColor: 20, fontStyle: "bold" },
-    columnStyles: { 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" } }
+    headStyles: { fillColor: [30,30,30] }
   });
 
-  const y = doc.lastAutoTable.finalY + 8;
+  const total = state.quote.items.reduce((acc,it)=> acc + safeNum(it.qty)*safeNum(it.unitPrice), 0);
+  const y = doc.lastAutoTable.finalY + 10;
+  doc.setFontSize(12);
+  doc.text(`Total: S/ ${total.toFixed(2)}`, 14, y);
 
   if (notes.trim()) {
     doc.setFontSize(10);
-    doc.text("Observaciones:", 14, y);
+    doc.text("Observaciones:", 14, y+8);
     doc.setFontSize(9);
-    doc.text(doc.splitTextToSize(notes, 180), 14, y+6);
+    doc.text(doc.splitTextToSize(notes, 180), 14, y+14);
   }
 
   doc.save(`${number}.pdf`);
 });
-
-
 
 document.getElementById("btnExportQuoteXlsx").addEventListener("click", ()=>{
   const wb = XLSX.utils.book_new();

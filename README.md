@@ -31,7 +31,3 @@ La app intentará leer las hojas **Productos** y **Clientes** con cabeceras igua
 ## Notas
 - No ejecuta macros del `.xlsm` (por seguridad, el navegador no puede).
 - Si tus cabeceras cambian, ajusta el parser en `assets/app.js`.
-
-
-## Logo en PDF
-- El PDF usa `assets/logo.jpg` (puedes reemplazar ese archivo por tu logo).
