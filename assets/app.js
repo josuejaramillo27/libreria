@@ -627,17 +627,36 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
   });
 
   // Cliente / Dirección box (2 filas)
+// Cliente / Dirección box (2 filas) - ancho dinámico
   const cY = boxY + 10;
-  const cW = 140;
-  doc.rect(lX, cY, cW, rRowH*2);
-  doc.line(lX, cY + rRowH, lX + cW, cY + rRowH);
-  doc.line(lX + 25, cY, lX + 25, cY + rRowH*2);
+  const labelW = 25;      // ancho fijo para etiquetas
+  const padding = 4;      // padding interno
+  const rowH = rRowH;
+
+  const clienteTxt = client?.cliente || "—";
+  const direccionTxt = client?.direccion || "—";
+
+  // medir texto según fuente actual
+  doc.setFontSize(9);
+  const clienteTextW = doc.getTextWidth(clienteTxt);
+  const direccionTextW = doc.getTextWidth(direccionTxt);
+
+  const contentW = Math.max(clienteTextW, direccionTextW);
+
+  // ancho total dinámico (con máximo para no invadir la caja derecha)
+  const maxCW = 130;
+  const cW = Math.min(labelW + contentW + padding * 2, maxCW);
+
+  doc.rect(lX, cY, cW, rowH*2);
+  doc.line(lX, cY + rowH, lX + cW, cY + rowH);
+  doc.line(lX + labelW, cY, lX + labelW, cY + rowH*2);
 
   doc.text("CLIENTE", lX + 2, cY + 5.1);
-  doc.text(client?.cliente || "—", lX + 27, cY + 5.1);
+  doc.text(clienteTxt, lX + labelW + padding, cY + 5.1, { maxWidth: cW - labelW - padding });
 
-  doc.text("DIRECCIÓN", lX + 2, cY + rRowH + 5.1);
-  doc.text(client?.direccion || "—", lX + 27, cY + rRowH + 5.1);
+  doc.text("DIRECCIÓN", lX + 2, cY + rowH + 5.1);
+  doc.text(direccionTxt, lX + labelW + padding, cY + rowH + 5.1, { maxWidth: cW - labelW - padding });
+
 
   // --------- Tabla principal ----------
   const tableStartY = cY + rRowH*2 + 10;
@@ -657,7 +676,7 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
     head: [["CÓDIGO","DESCRIPCIÓN","CANT.","PRECIO (S/)","PARCIAL (S/)"]],
     body: bodyRows,
     foot: [["", "", "", "TOTAL (S/)", total.toFixed(2)]],
-     showFoot: "lastPage",
+    showFoot: "lastPage",
     styles: { fontSize: 8, lineColor: 120, lineWidth: 0.2 },
     headStyles: { fillColor: [0,0,0], textColor: 255, halign: "center" },
     footStyles: { fillColor: [255,255,255], textColor: 0, fontStyle: "bold" },
