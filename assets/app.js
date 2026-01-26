@@ -657,6 +657,7 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
     head: [["CÓDIGO","DESCRIPCIÓN","CANT.","PRECIO (S/)","PARCIAL (S/)"]],
     body: bodyRows,
     foot: [["", "", "", "TOTAL (S/)", total.toFixed(2)]],
+     showFoot: "lastPage",
     styles: { fontSize: 8, lineColor: 120, lineWidth: 0.2 },
     headStyles: { fillColor: [0,0,0], textColor: 255, halign: "center" },
     footStyles: { fillColor: [255,255,255], textColor: 0, fontStyle: "bold" },
