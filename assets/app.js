@@ -515,7 +515,7 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
         fr.readAsDataURL(blob);
       }));
     // x: 140 aprox para A4 portrait (210mm). Ajuste: ancho 55, alto 22
-    doc.addImage(logoDataUrl, "JPEG", 135, 8, 40, 40);
+    doc.addImage(logoDataUrl, "JPEG", 135, 15, 40, 40);
   } catch (e) {
     // si falla, no pasa nada
   }
@@ -530,8 +530,8 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
 
   const total = state.quote.items.reduce((acc,it)=> acc + safeNum(it.qty)*safeNum(it.unitPrice), 0);
 
-  doc.autoTable({
-    startY: 36,
+doc.autoTable({
+  startY: 60,
     head: [["Código","Producto","Cant.","P. Unit (S/)","Subtotal (S/)"]],
     body: rows,
     foot: [["", "", "", "TOTAL (S/)", total.toFixed(2)]],
