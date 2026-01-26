@@ -25,6 +25,38 @@ function safeNum(x) {
   const n = Number(x);
   return Number.isFinite(n) ? n : 0;
 }
+
+function formatPriceInput(n) {
+  const x = Number(n);
+  return Number.isFinite(x) ? x.toFixed(2) : "0.00";
+}
+function parseDecimalInput(s) {
+  // Acepta "3.5" o "3,5"
+  const t = String(s ?? "").trim().replace(",", ".");
+  const n = parseFloat(t);
+  return Number.isFinite(n) ? n : 0;
+}
+function evalExprToNumber(raw) {
+  // Permite: 12, 12.34, 12,34, 10/2, 3+1.5, 8*0.9, (10+2)/4
+  const s0 = String(raw ?? "").trim();
+  if (!s0) return 0;
+  const s = s0.replaceAll(",", ".").replace(/\s+/g, "");
+  // Solo caracteres seguros
+  if (!/^[0-9+\-*/().]+$/.test(s)) return NaN;
+  try {
+    // eslint-disable-next-line no-new-func
+    const v = Function(`"use strict"; return (${s});`)();
+    return Number.isFinite(v) ? v : NaN;
+  } catch {
+    return NaN;
+  }
+}
+function to2(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
+}
+
+
 function todayISO() {
   const d = new Date();
   const pad = (n)=> String(n).padStart(2,"0");
@@ -122,13 +154,14 @@ function openEditModal({ title, help, fields, values, onSave }) {
     div.className = "col-12 col-md-6";
     div.innerHTML = `
       <label class="form-label form-label-sm">${f.label}</label>
-      <input class="form-control form-control-sm" id="${id}" ${f.readonly ? "readonly":""} placeholder="${f.placeholder||""}" />
+      <input class="form-control form-control-sm" id="${id}" data-ftype="${f.type||""}" ${f.readonly ? "readonly":""} placeholder="${f.placeholder||""}" />
     `;
     form.appendChild(div);
     const el = document.getElementById(id);
     el.value = values[f.key] ?? "";
     if (f.type === "number") el.type = "number";
-    if (f.step) el.step = f.step;
+    if (f.type === "expr") { el.type = "text"; el.inputMode = "decimal"; }
+    if (f.step && el.type==="number") el.step = f.step;
   });
   editModal.show();
 }
@@ -140,7 +173,15 @@ document.getElementById("btnSaveEdit").addEventListener("click", (e)=>{
   const out = {};
   inputs.forEach(inp => {
     const k = inp.id.replace(/^f_/,"");
-    out[k] = inp.type === "number" ? (inp.value === "" ? null : Number(inp.value)) : inp.value.trim();
+    const ftype = inp.dataset.ftype || "";
+    if (ftype === "expr") {
+      const v = evalExprToNumber(inp.value);
+      out[k] = (inp.value.trim()==="") ? null : (Number.isFinite(v) ? to2(v) : null);
+    } else if (inp.type === "number") {
+      out[k] = inp.value === "" ? null : Number(inp.value);
+    } else {
+      out[k] = inp.value.trim();
+    }
   });
   currentEdit.onSave(out);
   editModal.hide();
@@ -275,11 +316,11 @@ document.getElementById("btnNewProduct").addEventListener("click", ()=>{
     fields: [
       {key:"codigo", label:"Código", readonly:true},
       {key:"descripcion", label:"Descripción"},
-      {key:"costo", label:"Costo (S/)", type:"number", step:"0.01"},
-      {key:"precio_und", label:"Precio unidad (S/)", type:"number", step:"0.01"},
+      {key:"costo", label:"Costo (S/)", type:"expr"},
+      {key:"precio_und", label:"Precio unidad (S/)", type:"expr"},
       {key:"stock", label:"Stock", type:"number", step:"1"},
       {key:"cant_mayor", label:"Mayor desde", type:"number", step:"1"},
-      {key:"precio_cm", label:"Precio mayor (S/)", type:"number", step:"0.01"},
+      {key:"precio_cm", label:"Precio mayor (S/)", type:"expr"},
       {key:"proveedor", label:"Proveedor"},
       {key:"notas", label:"Notas"}
     ],
@@ -307,11 +348,11 @@ document.getElementById("view-productos").addEventListener("click", (e)=>{
       fields: [
         {key:"codigo", label:"Código", readonly:true},
         {key:"descripcion", label:"Descripción"},
-        {key:"costo", label:"Costo (S/)", type:"number", step:"0.01"},
-        {key:"precio_und", label:"Precio unidad (S/)", type:"number", step:"0.01"},
+        {key:"costo", label:"Costo (S/)", type:"expr"},
+        {key:"precio_und", label:"Precio unidad (S/)", type:"expr"},
         {key:"stock", label:"Stock", type:"number", step:"1"},
         {key:"cant_mayor", label:"Mayor desde", type:"number", step:"1"},
-        {key:"precio_cm", label:"Precio mayor (S/)", type:"number", step:"0.01"},
+        {key:"precio_cm", label:"Precio mayor (S/)", type:"expr"},
         {key:"proveedor", label:"Proveedor"},
         {key:"notas", label:"Notas"}
       ],
@@ -353,7 +394,7 @@ function renderQuote() {
         <td class="mono">${it.codigo}</td>
         <td>${escapeHtml(it.descripcion)}</td>
         <td class="text-end"><input class="form-control form-control-sm text-end" type="number" step="1" min="1" data-idx="${idx}" data-k="qty" value="${it.qty}"></td>
-        <td class="text-end"><input class="form-control form-control-sm text-end" type="number" step="0.01" min="0" data-idx="${idx}" data-k="unitPrice" value="${it.unitPrice}"></td>
+        <td class="text-end"><input class="form-control form-control-sm text-end" type="text" inputmode="decimal" data-idx="${idx}" data-k="unitPrice" value="${(it.unitPriceRaw ?? formatPriceInput(it.unitPrice))}"></td>
         <td class="text-end">${money(subtotal)}</td>
         <td class="text-end"><button class="btn btn-outline-danger btn-sm" data-act="rm-quote" data-idx="${idx}">✕</button></td>
       </tr>
@@ -369,20 +410,36 @@ function updateQuoteTotal() {
   saveToLocalStorage();
 }
 
+
+
 document.getElementById("quoteTbody").addEventListener("input", (e)=>{
   const inp = e.target.closest("input[data-idx]");
   if (!inp) return;
   const idx = Number(inp.dataset.idx);
   const k = inp.dataset.k;
   if (!state.quote.items[idx]) return;
-  state.quote.items[idx][k] = (k==="qty") ? Math.max(1, Number(inp.value||1)) : Number(inp.value||0);
-  // auto-tier pricing if qty changed and product has mayor price (unless user overwrote? keep simple: apply rule on qty change only if k=qty)
-  if (k==="qty") {
-    const prod = state.products.find(p=>p.codigo===state.quote.items[idx].codigo);
-    if (prod) state.quote.items[idx].unitPrice = calcUnitPrice(prod, state.quote.items[idx].qty);
+
+  if (k === "qty") {
+    state.quote.items[idx].qty = Math.max(1, Number(inp.value || 1));
+    // Si el usuario NO ha editado precio manualmente, aplicamos regla mayorista
+    if (!state.quote.items[idx].manualPrice) {
+      const prod = state.products.find(p=>p.codigo===state.quote.items[idx].codigo);
+      if (prod) state.quote.items[idx].unitPrice = calcUnitPrice(prod, state.quote.items[idx].qty);
+    }
+    renderQuote();
+    return;
   }
-  renderQuote();
+
+  if (k === "unitPrice") {
+    // Guardamos el texto mientras escribe, sin recalcular ni re-renderizar
+    state.quote.items[idx].unitPriceRaw = inp.value;
+    state.quote.items[idx].manualPrice = true;
+    saveToLocalStorage();
+    return;
+  }
 });
+
+
 
 document.getElementById("view-cotizacion").addEventListener("click", (e)=>{
   const btn = e.target.closest("button[data-act]");
@@ -413,7 +470,9 @@ function addProductToQuote(prod, qty=1) {
       codigo: prod.codigo,
       descripcion: prod.descripcion || "",
       qty,
-      unitPrice: calcUnitPrice(prod, qty)
+      unitPrice: calcUnitPrice(prod, qty),
+      manualPrice: false,
+      unitPriceRaw: null
     });
   }
   renderQuote();
@@ -463,8 +522,35 @@ document.getElementById("quoteClientSearch").addEventListener("keydown", (e)=>{
   e.target.value = "";
 });
 
+
+function commitQuoteUnitPrice(idx, raw) {
+  const v = evalExprToNumber(raw);
+  if (!Number.isFinite(v)) {
+    toast("Expresión inválida en precio unitario", "warning");
+    return false;
+  }
+  state.quote.items[idx].unitPrice = to2(v);
+  state.quote.items[idx].unitPriceRaw = null;
+  state.quote.items[idx].manualPrice = true;
+  saveToLocalStorage();
+  return true;
+}
+
+// Confirmar precio unitario al DESELECCIONAR (click afuera / TAB)
+document.getElementById("quoteTbody").addEventListener("focusout", (e)=>{
+  const inp = e.target.closest('input[data-idx][data-k="unitPrice"]');
+  if (!inp) return;
+  const idx = Number(inp.dataset.idx);
+  if (!state.quote.items[idx]) return;
+  const ok = commitQuoteUnitPrice(idx, inp.value);
+  if (ok) renderQuote();
+}, true);
+
 /* ---------------- Export Quotation: PDF / Excel ---------------- */
-document.getElementById("btnExportQuotePdf").addEventListener("click", ()=>{
+
+
+
+document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=>{
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
@@ -473,17 +559,90 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", ()=>{
   const date = document.getElementById("quoteDate").value || todayISO();
   const notes = document.getElementById("quoteNotes").value || "";
 
-  doc.setFontSize(14);
-  doc.text("D'Kolor - Cotización de útiles escolares", 14, 16);
+  const pageW = doc.internal.pageSize.getWidth();
 
-  doc.setFontSize(10);
-  doc.text(`N°: ${number}`, 14, 24);
-  doc.text(`Fecha: ${date}`, 14, 30);
+  // --------- Logo centrado con borde (como ejemplo) ----------
+  const logoW = 90;
+  const logoH = 40;
+  const logoX = (pageW - logoW) / 2;
+  const logoY = 18;
 
-  const clientLine = client ? `${client.codigo} • ${client.cliente} • DNI: ${client.dni || "—"}` : "—";
-  doc.text(`Cliente: ${clientLine}`, 14, 36);
+  try {
+    const logoDataUrl = await fetch("assets/logo.jpg")
+      .then(r=>r.blob())
+      .then(blob => new Promise((resolve)=>{
+        const fr = new FileReader();
+        fr.onload = ()=> resolve(fr.result);
+        fr.readAsDataURL(blob);
+      }));
+    doc.addImage(logoDataUrl, "JPEG", logoX, logoY, logoW, logoH);
+    // borde
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.6);
+    doc.rect(logoX, logoY, logoW, logoH);
+  } catch (e) {
+    // fallback sin logo
+    doc.setFontSize(16);
+    doc.text("D'Kolor", pageW/2, logoY+18, { align: "center" });
+  }
 
-  const rows = state.quote.items.map((it)=>[
+  // --------- Cajas superiores ----------
+  const boxY = logoY + logoH + 12;
+
+  // Left box: N° ITEMS
+  const items = state.quote.items.length;
+  const lX = 14, lW = 95, rowH = 7;
+  doc.setFontSize(9);
+  doc.setLineWidth(0.2);
+  doc.rect(lX, boxY, lW, rowH);
+  doc.line(lX + 30, boxY, lX + 30, boxY + rowH);
+  doc.text("N° ITEMS", lX + 2, boxY + 5.1);
+  doc.text(String(items), lX + lW - 2, boxY + 5.1, { align: "right" });
+
+  // Right box: CODIGO / COD.CLIENTE / DNI / FECHA
+  const rW = 70;
+  const rX = pageW - 14 - rW;
+  const rY = boxY - 3; // un poco más arriba, como el ejemplo
+  const rRowH = 7;
+
+  const rowsInfo = [
+    ["CÓDIGO", number],
+    ["COD.CLIENTE", client?.codigo || "—"],
+    ["DNI", client?.dni || "—"],
+    ["FECHA", date]
+  ];
+  doc.rect(rX, rY, rW, rRowH * rowsInfo.length);
+  // líneas horizontales
+  for (let i=1;i<rowsInfo.length;i++){
+    doc.line(rX, rY + rRowH*i, rX + rW, rY + rRowH*i);
+  }
+  // línea vertical separadora
+  const split = rX + 28;
+  doc.line(split, rY, split, rY + rRowH*rowsInfo.length);
+
+  rowsInfo.forEach((rr, i)=>{
+    const yy = rY + rRowH*i + 5.1;
+    doc.text(rr[0], rX + 2, yy);
+    doc.text(String(rr[1] ?? ""), rX + rW - 2, yy, { align: "right" });
+  });
+
+  // Cliente / Dirección box (2 filas)
+  const cY = boxY + 10;
+  const cW = 140;
+  doc.rect(lX, cY, cW, rRowH*2);
+  doc.line(lX, cY + rRowH, lX + cW, cY + rRowH);
+  doc.line(lX + 25, cY, lX + 25, cY + rRowH*2);
+
+  doc.text("CLIENTE", lX + 2, cY + 5.1);
+  doc.text(client?.cliente || "—", lX + 27, cY + 5.1);
+
+  doc.text("DIRECCIÓN", lX + 2, cY + rRowH + 5.1);
+  doc.text(client?.direccion || "—", lX + 27, cY + rRowH + 5.1);
+
+  // --------- Tabla principal ----------
+  const tableStartY = cY + rRowH*2 + 10;
+
+  const bodyRows = state.quote.items.map((it)=>[
     it.codigo,
     it.descripcion,
     String(it.qty),
@@ -491,28 +650,41 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", ()=>{
     (safeNum(it.qty)*safeNum(it.unitPrice)).toFixed(2)
   ]);
 
+  const total = state.quote.items.reduce((acc,it)=> acc + safeNum(it.qty)*safeNum(it.unitPrice), 0);
+
   doc.autoTable({
-    startY: 42,
-    head: [["Código","Producto","Cant.","P. Unit (S/)","Subtotal (S/)"]],
-    body: rows,
-    styles: { fontSize: 9 },
-    headStyles: { fillColor: [30,30,30] }
+    startY: tableStartY,
+    head: [["CÓDIGO","DESCRIPCIÓN","CANT.","PRECIO (S/)","PARCIAL (S/)"]],
+    body: bodyRows,
+    foot: [["", "", "", "TOTAL (S/)", total.toFixed(2)]],
+    styles: { fontSize: 8, lineColor: 120, lineWidth: 0.2 },
+    headStyles: { fillColor: [0,0,0], textColor: 255, halign: "center" },
+    footStyles: { fillColor: [255,255,255], textColor: 0, fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [235,235,235] },
+    columnStyles: {
+      2: { halign: "right", cellWidth: 16 },
+      3: { halign: "right", cellWidth: 22 },
+      4: { halign: "right", cellWidth: 24 },
+      0: { cellWidth: 26 },
+      1: { cellWidth: 78 }
+    },
+    theme: "grid"
   });
 
-  const total = state.quote.items.reduce((acc,it)=> acc + safeNum(it.qty)*safeNum(it.unitPrice), 0);
-  const y = doc.lastAutoTable.finalY + 10;
-  doc.setFontSize(12);
-  doc.text(`Total: S/ ${total.toFixed(2)}`, 14, y);
-
+  // Observaciones (opcional)
+  const y = doc.lastAutoTable.finalY + 8;
   if (notes.trim()) {
-    doc.setFontSize(10);
-    doc.text("Observaciones:", 14, y+8);
     doc.setFontSize(9);
-    doc.text(doc.splitTextToSize(notes, 180), 14, y+14);
+    doc.text("Observaciones:", 14, y);
+    doc.setFontSize(8);
+    doc.text(doc.splitTextToSize(notes, 180), 14, y+5);
   }
 
   doc.save(`${number}.pdf`);
 });
+
+
+
 
 document.getElementById("btnExportQuoteXlsx").addEventListener("click", ()=>{
   const wb = XLSX.utils.book_new();
