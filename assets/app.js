@@ -496,15 +496,30 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
 
   // --- Encabezado: datos izquierda, logo derecha ---
 // --- Encabezado: datos izquierda, logo derecha ---
+// --- Encabezado: centrar DATOS respecto al logo (logo fijo) ---
 const leftX = 14;
-const topY = 14;
+
+// Altura del bloque de datos (3 líneas)
+const lineGap = 6;
+const dataLines = 3;
+const dataBlockHeight = lineGap * (dataLines - 1);
+
+// Centro vertical del logo (NO se mueve)
+const logoCenterY = logoY + (logoH / 2);
+
+// Calcular el Y inicial del texto para centrarlo con el logo
+const textTopY = logoCenterY - (dataBlockHeight / 2);
 
 doc.setFontSize(11);
-doc.text(`N°: ${number}`, leftX, topY);
-doc.text(`Fecha: ${date}`, leftX, topY + 6);
+doc.text(`N°: ${number}`, leftX, textTopY);
+doc.text(`Fecha: ${date}`, leftX, textTopY + lineGap);
 
-const clientLine = client ? `${client.codigo} • ${client.cliente} • DNI: ${client.dni || "—"}` : "—";
-doc.text(`Cliente: ${clientLine}`, leftX, topY + 12);
+const clientLine = client
+  ? `${client.codigo} • ${client.cliente} • DNI: ${client.dni || "—"}`
+  : "—";
+
+doc.text(`Cliente: ${clientLine}`, leftX, textTopY + (lineGap * 2), { maxWidth: 110 });
+
 
 // Calcular altura del bloque de datos (3 líneas)
 const dataBlockTop = topY;           // primera línea
