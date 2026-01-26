@@ -494,18 +494,33 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
   const date = document.getElementById("quoteDate").value || todayISO();
   const notes = document.getElementById("quoteNotes").value || "";
 
-  // --- Encabezado: datos izquierda, logo derecha ---
+  // --- Logo (FIJO) a la derecha ---
+  const logoW = 40;
+  const logoH = 40;
+  const logoX = 140;
+  const logoY = 12; // <- fijo, no lo tocamos para el centrado del texto
+
+  // Centro vertical del logo
+  const logoCenterY = logoY + (logoH / 2);
+
+  // --- Texto centrado verticalmente respecto al logo ---
   const leftX = 14;
-  const topY = 14;
+  const lineGap = 6;
+  const dataLines = 3;
+  const dataBlockHeight = lineGap * (dataLines - 1);
+  const textTopY = logoCenterY - (dataBlockHeight / 2);
 
   doc.setFontSize(11);
-  doc.text(`N°: ${number}`, leftX, topY);
-  doc.text(`Fecha: ${date}`, leftX, topY + 6);
+  doc.text(`N°: ${number}`, leftX, textTopY);
+  doc.text(`Fecha: ${date}`, leftX, textTopY + lineGap);
 
-  const clientLine = client ? `${client.codigo} • ${client.cliente} • DNI: ${client.dni || "—"}` : "—";
-  doc.text(`Cliente: ${clientLine}`, leftX, topY + 12);
+  const clientLine = client
+    ? `${client.codigo} • ${client.cliente} • DNI: ${client.dni || "—"}`
+    : "—";
 
-  // Logo a la derecha (assets/logo.jpg)
+  doc.text(`Cliente: ${clientLine}`, leftX, textTopY + (lineGap * 2), { maxWidth: 110 });
+
+  // --- Poner logo UNA sola vez ---
   try {
     const logoDataUrl = await fetch("assets/logo.jpg")
       .then(r=>r.blob())
@@ -514,12 +529,10 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
         fr.onload = ()=> resolve(fr.result);
         fr.readAsDataURL(blob);
       }));
-    // x: 140 aprox para A4 portrait (210mm). Ajuste: ancho 55, alto 22
-    doc.addImage(logoDataUrl, "JPEG", 140, 10, 55, 22);
-  } catch (e) {
-    // si falla, no pasa nada
-  }
+    doc.addImage(logoDataUrl, "JPEG", logoX, logoY, logoW, logoH);
+  } catch (e) {}
 
+  // --- Tabla ---
   const rows = state.quote.items.map((it)=>[
     it.codigo,
     it.descripcion,
@@ -531,7 +544,7 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
   const total = state.quote.items.reduce((acc,it)=> acc + safeNum(it.qty)*safeNum(it.unitPrice), 0);
 
   doc.autoTable({
-    startY: 36,
+    startY: 60,
     head: [["Código","Producto","Cant.","P. Unit (S/)","Subtotal (S/)"]],
     body: rows,
     foot: [["", "", "", "TOTAL (S/)", total.toFixed(2)]],
@@ -552,8 +565,6 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
 
   doc.save(`${number}.pdf`);
 });
-
-
 
 document.getElementById("btnExportQuoteXlsx").addEventListener("click", ()=>{
   const wb = XLSX.utils.book_new();
