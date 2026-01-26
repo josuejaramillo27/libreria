@@ -25,6 +25,18 @@ function safeNum(x) {
   const n = Number(x);
   return Number.isFinite(n) ? n : 0;
 }
+
+function formatPriceInput(n) {
+  const x = Number(n);
+  return Number.isFinite(x) ? x.toFixed(2) : "0.00";
+}
+function parseDecimalInput(s) {
+  // Acepta "3.5" o "3,5"
+  const t = String(s ?? "").trim().replace(",", ".");
+  const n = parseFloat(t);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function todayISO() {
   const d = new Date();
   const pad = (n)=> String(n).padStart(2,"0");
@@ -353,7 +365,7 @@ function renderQuote() {
         <td class="mono">${it.codigo}</td>
         <td>${escapeHtml(it.descripcion)}</td>
         <td class="text-end"><input class="form-control form-control-sm text-end" type="number" step="1" min="1" data-idx="${idx}" data-k="qty" value="${it.qty}"></td>
-        <td class="text-end"><input class="form-control form-control-sm text-end" type="number" step="0.01" min="0" data-idx="${idx}" data-k="unitPrice" value="${it.unitPrice}"></td>
+        <td class="text-end"><input class="form-control form-control-sm text-end" type="text" inputmode="decimal" data-idx="${idx}" data-k="unitPrice" value="${formatPriceInput(it.unitPrice)}"></td>
         <td class="text-end">${money(subtotal)}</td>
         <td class="text-end"><button class="btn btn-outline-danger btn-sm" data-act="rm-quote" data-idx="${idx}">✕</button></td>
       </tr>
@@ -375,7 +387,7 @@ document.getElementById("quoteTbody").addEventListener("input", (e)=>{
   const idx = Number(inp.dataset.idx);
   const k = inp.dataset.k;
   if (!state.quote.items[idx]) return;
-  state.quote.items[idx][k] = (k==="qty") ? Math.max(1, Number(inp.value||1)) : Number(inp.value||0);
+  state.quote.items[idx][k] = (k==="qty") ? Math.max(1, Number(inp.value||1)) : parseDecimalInput(inp.value);
   // auto-tier pricing if qty changed and product has mayor price (unless user overwrote? keep simple: apply rule on qty change only if k=qty)
   if (k==="qty") {
     const prod = state.products.find(p=>p.codigo===state.quote.items[idx].codigo);
@@ -464,7 +476,8 @@ document.getElementById("quoteClientSearch").addEventListener("keydown", (e)=>{
 });
 
 /* ---------------- Export Quotation: PDF / Excel ---------------- */
-document.getElementById("btnExportQuotePdf").addEventListener("click", ()=>{
+
+document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=>{
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
@@ -473,15 +486,33 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", ()=>{
   const date = document.getElementById("quoteDate").value || todayISO();
   const notes = document.getElementById("quoteNotes").value || "";
 
-  doc.setFontSize(14);
-  doc.text("D'Kolor - Cotización de útiles escolares", 14, 16);
+  // Logo (assets/logo.jpg)
+  let usedLogo = false;
+  try {
+    const logoDataUrl = await fetch("assets/logo.jpg")
+      .then(r=>r.blob())
+      .then(blob => new Promise((resolve)=>{
+        const fr = new FileReader();
+        fr.onload = ()=> resolve(fr.result);
+        fr.readAsDataURL(blob);
+      }));
+    doc.addImage(logoDataUrl, "JPEG", 14, 10, 55, 22);
+    usedLogo = true;
+  } catch (e) {
+    usedLogo = false;
+  }
+
+  if (!usedLogo) {
+    doc.setFontSize(14);
+    doc.text("D'Kolor - Cotización", 14, 16);
+  }
 
   doc.setFontSize(10);
-  doc.text(`N°: ${number}`, 14, 24);
-  doc.text(`Fecha: ${date}`, 14, 30);
+  doc.text(`N°: ${number}`, 14, 38);
+  doc.text(`Fecha: ${date}`, 14, 44);
 
   const clientLine = client ? `${client.codigo} • ${client.cliente} • DNI: ${client.dni || "—"}` : "—";
-  doc.text(`Cliente: ${clientLine}`, 14, 36);
+  doc.text(`Cliente: ${clientLine}`, 14, 50);
 
   const rows = state.quote.items.map((it)=>[
     it.codigo,
@@ -491,28 +522,31 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", ()=>{
     (safeNum(it.qty)*safeNum(it.unitPrice)).toFixed(2)
   ]);
 
+  const total = state.quote.items.reduce((acc,it)=> acc + safeNum(it.qty)*safeNum(it.unitPrice), 0);
+
   doc.autoTable({
-    startY: 42,
+    startY: 56,
     head: [["Código","Producto","Cant.","P. Unit (S/)","Subtotal (S/)"]],
     body: rows,
+    foot: [["", "", "", "TOTAL (S/)", total.toFixed(2)]],
     styles: { fontSize: 9 },
-    headStyles: { fillColor: [30,30,30] }
+    headStyles: { fillColor: [30,30,30] },
+    footStyles: { fillColor: [245,245,245], textColor: 20, fontStyle: "bold" },
+    columnStyles: { 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" } }
   });
 
-  const total = state.quote.items.reduce((acc,it)=> acc + safeNum(it.qty)*safeNum(it.unitPrice), 0);
-  const y = doc.lastAutoTable.finalY + 10;
-  doc.setFontSize(12);
-  doc.text(`Total: S/ ${total.toFixed(2)}`, 14, y);
+  const y = doc.lastAutoTable.finalY + 8;
 
   if (notes.trim()) {
     doc.setFontSize(10);
-    doc.text("Observaciones:", 14, y+8);
+    doc.text("Observaciones:", 14, y);
     doc.setFontSize(9);
-    doc.text(doc.splitTextToSize(notes, 180), 14, y+14);
+    doc.text(doc.splitTextToSize(notes, 180), 14, y+6);
   }
 
   doc.save(`${number}.pdf`);
 });
+
 
 document.getElementById("btnExportQuoteXlsx").addEventListener("click", ()=>{
   const wb = XLSX.utils.book_new();
