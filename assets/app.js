@@ -626,18 +626,39 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
     doc.text(String(rr[1] ?? ""), rX + rW - 2, yy, { align: "right" });
   });
 
-  // Cliente / Dirección box (2 filas)
-  const cY = boxY + 10;
-  const cW = 140;
-  doc.rect(lX, cY, cW, rRowH*2);
-  doc.line(lX, cY + rRowH, lX + cW, cY + rRowH);
-  doc.line(lX + 25, cY, lX + 25, cY + rRowH*2);
+// --------- CLIENTE / DIRECCIÓN (ancho dinámico) ----------
+const cY = boxY + 10;
+const labelW = 25;        // ancho fijo para "CLIENTE" / "DIRECCIÓN"
+const padding = 4;        // espacio interno
+const rowH = rRowH;
 
-  doc.text("CLIENTE", lX + 2, cY + 5.1);
-  doc.text(client?.cliente || "—", lX + 27, cY + 5.1);
+// Texto
+const clienteTxt = client?.cliente || "—";
+const direccionTxt = client?.direccion || "—";
 
-  doc.text("DIRECCIÓN", lX + 2, cY + rRowH + 5.1);
-  doc.text(client?.direccion || "—", lX + 27, cY + rRowH + 5.1);
+// Medir texto (usa la fuente actual)
+doc.setFontSize(9);
+const clienteTextW = doc.getTextWidth(clienteTxt);
+const direccionTextW = doc.getTextWidth(direccionTxt);
+
+// Tomar el más largo
+const contentW = Math.max(clienteTextW, direccionTextW);
+
+// Ancho total dinámico del rectángulo
+const cW = labelW + contentW + padding * 2;
+
+// Dibujar rectángulo
+doc.rect(lX, cY, cW, rowH * 2);
+doc.line(lX, cY + rowH, lX + cW, cY + rowH);
+doc.line(lX + labelW, cY, lX + labelW, cY + rowH * 2);
+
+// Texto
+doc.text("CLIENTE", lX + 2, cY + 5.1);
+doc.text(clienteTxt, lX + labelW + padding, cY + 5.1);
+
+doc.text("DIRECCIÓN", lX + 2, cY + rowH + 5.1);
+doc.text(direccionTxt, lX + labelW + padding, cY + rowH + 5.1);
+
 
   // --------- Tabla principal ----------
   const tableStartY = cY + rRowH*2 + 10;
