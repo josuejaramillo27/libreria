@@ -382,26 +382,31 @@ function updateQuoteTotal() {
 }
 
 
-document.getElementById("quoteTbody").addEventListener("input", (e)=>{
-  const inp = e.target.closest("input[data-idx]");
+document.getElementById("quoteTbody").addEventListener("keydown", (e)=>{
+  const inp = e.target.closest("input[data-idx][data-k]");
   if (!inp) return;
+
   const idx = Number(inp.dataset.idx);
   const k = inp.dataset.k;
   if (!state.quote.items[idx]) return;
 
-  // Cantidad: actualiza y recalcula (se refleja al instante)
-  if (k === "qty") {
-    state.quote.items[idx].qty = Math.max(1, Number(inp.value || 1));
-    const prod = state.products.find(p=>p.codigo===state.quote.items[idx].codigo);
-    if (prod) state.quote.items[idx].unitPrice = calcUnitPrice(prod, state.quote.items[idx].qty);
-    renderQuote(); // aquí sí renderizamos (la cantidad normalmente no requiere tipear decimales)
+  // Confirmar precio unitario SOLO con ENTER
+  if (k === "unitPrice" && e.key === "Enter") {
+    e.preventDefault();
+
+    // 1) Guardar precio en el item
+    state.quote.items[idx].unitPrice = parseDecimalInput(inp.value);
+
+    // 2) Re-render para recalcular subtotal y total
+    renderQuote();
+
+    // 3) (Opcional) Quitar foco al presionar Enter
+    const refocus = document.querySelector(`input[data-idx="${idx}"][data-k="unitPrice"]`);
+    if (refocus) refocus.blur();
+
     return;
   }
-
-  // Precio unitario: NO renderizamos en cada tecla (para no perder el foco/selección).
-  // El valor se confirmará solo con ENTER (ver keydown abajo).
 });
-
 
 document.getElementById("view-cotizacion").addEventListener("click", (e)=>{
   const btn = e.target.closest("button[data-act]");
