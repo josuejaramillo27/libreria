@@ -628,7 +628,7 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
 
   // Cliente / Dirección box (2 filas)
   const cY = boxY + 10;
-  const cW = 140;
+  const cW = 110;
   doc.rect(lX, cY, cW, rRowH*2);
   doc.line(lX, cY + rRowH, lX + cW, cY + rRowH);
   doc.line(lX + 25, cY, lX + 25, cY + rRowH*2);
