@@ -652,36 +652,43 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
 
   const total = state.quote.items.reduce((acc,it)=> acc + safeNum(it.qty)*safeNum(it.unitPrice), 0);
 
-  doc.autoTable({
-    startY: tableStartY,
-    head: [["CÓDIGO","DESCRIPCIÓN","CANT.","PRECIO (S/)","PARCIAL (S/)"]],
-    body: bodyRows,
-    foot: [["", "", "", "TOTAL (S/)", total.toFixed(2)]],
-     showFoot: "lastPage",
-    styles: {
-  fontSize: 8,
-  lineColor: 120,
-  lineWidth: 0.2
-},
-columnStyles: {
-  0: { fontStyle: "bold" },        // CÓDIGO
-  1: { fontStyle: "bold" },        // DESCRIPCIÓN
-  2: { halign: "right" },          // CANT.
-  3: { halign: "right", fontStyle: "bold" }, // PRECIO
-  4: { halign: "right", fontStyle: "bold" }  // PARCIAL
-},
-    headStyles: { fillColor: [0,0,0], textColor: 255, halign: "center" },
-    footStyles: { fillColor: [255,255,255], textColor: 0, fontStyle: "bold" },
-    alternateRowStyles: { fillColor: [235,235,235] },
-    columnStyles: {
-      2: { halign: "right", cellWidth: 16 },
-      3: { halign: "right", cellWidth: 22 },
-      4: { halign: "right", cellWidth: 24 },
-      0: { cellWidth: 26 },
-      1: { cellWidth: 78 }
-    },
-    theme: "grid"
-  });
+doc.autoTable({
+  startY: tableStartY,
+  head: [["CÓDIGO","DESCRIPCIÓN","CANT.","PRECIO (S/)","PARCIAL (S/)"]],
+  body: bodyRows,
+  foot: [["", "", "", "TOTAL (S/)", total.toFixed(2)]],
+
+  showFoot: "lastPage",
+
+  styles: {
+    fontSize: 8,
+    lineColor: 120,
+    lineWidth: 0.2
+  },
+
+  headStyles: {
+    fillColor: [0,0,0],
+    textColor: 255,
+    halign: "center"
+  },
+
+  footStyles: {
+    fillColor: [255,255,255],
+    textColor: 0,
+    fontStyle: "bold"
+  },
+
+  columnStyles: {
+    0: { fontStyle: "bold" },               // CÓDIGO
+    1: { fontStyle: "bold" },               // DESCRIPCIÓN
+    2: { halign: "right" },                 // CANT.
+    3: { halign: "right", fontStyle: "bold" }, // PRECIO
+    4: { halign: "right", fontStyle: "bold" }  // PARCIAL
+  },
+
+  alternateRowStyles: { fillColor: [235,235,235] },
+  theme: "grid"
+});
 
   // Observaciones (opcional)
   const y = doc.lastAutoTable.finalY + 8;
