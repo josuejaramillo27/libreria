@@ -658,7 +658,18 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
     body: bodyRows,
     foot: [["", "", "", "TOTAL (S/)", total.toFixed(2)]],
      showFoot: "lastPage",
-    styles: { fontSize: 8, lineColor: 120, lineWidth: 0.2 },
+    styles: {
+  fontSize: 8,
+  lineColor: 120,
+  lineWidth: 0.2
+},
+columnStyles: {
+  0: { fontStyle: "bold" },        // CÓDIGO
+  1: { fontStyle: "bold" },        // DESCRIPCIÓN
+  2: { halign: "right" },          // CANT.
+  3: { halign: "right", fontStyle: "bold" }, // PRECIO
+  4: { halign: "right", fontStyle: "bold" }  // PARCIAL
+},
     headStyles: { fillColor: [0,0,0], textColor: 255, halign: "center" },
     footStyles: { fillColor: [255,255,255], textColor: 0, fontStyle: "bold" },
     alternateRowStyles: { fillColor: [235,235,235] },
