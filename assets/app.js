@@ -381,20 +381,27 @@ function updateQuoteTotal() {
   saveToLocalStorage();
 }
 
+
 document.getElementById("quoteTbody").addEventListener("input", (e)=>{
   const inp = e.target.closest("input[data-idx]");
   if (!inp) return;
   const idx = Number(inp.dataset.idx);
   const k = inp.dataset.k;
   if (!state.quote.items[idx]) return;
-  state.quote.items[idx][k] = (k==="qty") ? Math.max(1, Number(inp.value||1)) : parseDecimalInput(inp.value);
-  // auto-tier pricing if qty changed and product has mayor price (unless user overwrote? keep simple: apply rule on qty change only if k=qty)
-  if (k==="qty") {
+
+  // Cantidad: actualiza y recalcula (se refleja al instante)
+  if (k === "qty") {
+    state.quote.items[idx].qty = Math.max(1, Number(inp.value || 1));
     const prod = state.products.find(p=>p.codigo===state.quote.items[idx].codigo);
     if (prod) state.quote.items[idx].unitPrice = calcUnitPrice(prod, state.quote.items[idx].qty);
+    renderQuote(); // aquí sí renderizamos (la cantidad normalmente no requiere tipear decimales)
+    return;
   }
-  renderQuote();
+
+  // Precio unitario: NO renderizamos en cada tecla (para no perder el foco/selección).
+  // El valor se confirmará solo con ENTER (ver keydown abajo).
 });
+
 
 document.getElementById("view-cotizacion").addEventListener("click", (e)=>{
   const btn = e.target.closest("button[data-act]");
@@ -477,6 +484,7 @@ document.getElementById("quoteClientSearch").addEventListener("keydown", (e)=>{
 
 /* ---------------- Export Quotation: PDF / Excel ---------------- */
 
+
 document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=>{
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
@@ -486,8 +494,18 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
   const date = document.getElementById("quoteDate").value || todayISO();
   const notes = document.getElementById("quoteNotes").value || "";
 
-  // Logo (assets/logo.jpg)
-  let usedLogo = false;
+  // --- Encabezado: datos izquierda, logo derecha ---
+  const leftX = 14;
+  const topY = 14;
+
+  doc.setFontSize(11);
+  doc.text(`N°: ${number}`, leftX, topY);
+  doc.text(`Fecha: ${date}`, leftX, topY + 6);
+
+  const clientLine = client ? `${client.codigo} • ${client.cliente} • DNI: ${client.dni || "—"}` : "—";
+  doc.text(`Cliente: ${clientLine}`, leftX, topY + 12);
+
+  // Logo a la derecha (assets/logo.jpg)
   try {
     const logoDataUrl = await fetch("assets/logo.jpg")
       .then(r=>r.blob())
@@ -496,23 +514,11 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
         fr.onload = ()=> resolve(fr.result);
         fr.readAsDataURL(blob);
       }));
-    doc.addImage(logoDataUrl, "JPEG", 14, 10, 55, 22);
-    usedLogo = true;
+    // x: 140 aprox para A4 portrait (210mm). Ajuste: ancho 55, alto 22
+    doc.addImage(logoDataUrl, "JPEG", 140, 10, 55, 22);
   } catch (e) {
-    usedLogo = false;
+    // si falla, no pasa nada
   }
-
-  if (!usedLogo) {
-    doc.setFontSize(14);
-    doc.text("D'Kolor - Cotización", 14, 16);
-  }
-
-  doc.setFontSize(10);
-  doc.text(`N°: ${number}`, 14, 38);
-  doc.text(`Fecha: ${date}`, 14, 44);
-
-  const clientLine = client ? `${client.codigo} • ${client.cliente} • DNI: ${client.dni || "—"}` : "—";
-  doc.text(`Cliente: ${clientLine}`, 14, 50);
 
   const rows = state.quote.items.map((it)=>[
     it.codigo,
@@ -525,7 +531,7 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
   const total = state.quote.items.reduce((acc,it)=> acc + safeNum(it.qty)*safeNum(it.unitPrice), 0);
 
   doc.autoTable({
-    startY: 56,
+    startY: 36,
     head: [["Código","Producto","Cant.","P. Unit (S/)","Subtotal (S/)"]],
     body: rows,
     foot: [["", "", "", "TOTAL (S/)", total.toFixed(2)]],
@@ -546,6 +552,7 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
 
   doc.save(`${number}.pdf`);
 });
+
 
 
 document.getElementById("btnExportQuoteXlsx").addEventListener("click", ()=>{
