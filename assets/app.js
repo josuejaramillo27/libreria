@@ -495,15 +495,41 @@ document.getElementById("btnExportQuotePdf").addEventListener("click", async ()=
   const notes = document.getElementById("quoteNotes").value || "";
 
   // --- Encabezado: datos izquierda, logo derecha ---
-  const leftX = 14;
-  const topY = 14;
+// --- Encabezado: datos izquierda, logo derecha ---
+const leftX = 14;
+const topY = 14;
 
-  doc.setFontSize(11);
-  doc.text(`N°: ${number}`, leftX, topY);
-  doc.text(`Fecha: ${date}`, leftX, topY + 6);
+doc.setFontSize(11);
+doc.text(`N°: ${number}`, leftX, topY);
+doc.text(`Fecha: ${date}`, leftX, topY + 6);
 
-  const clientLine = client ? `${client.codigo} • ${client.cliente} • DNI: ${client.dni || "—"}` : "—";
-  doc.text(`Cliente: ${clientLine}`, leftX, topY + 12);
+const clientLine = client ? `${client.codigo} • ${client.cliente} • DNI: ${client.dni || "—"}` : "—";
+doc.text(`Cliente: ${clientLine}`, leftX, topY + 12);
+
+// Calcular altura del bloque de datos (3 líneas)
+const dataBlockTop = topY;           // primera línea
+const dataBlockBottom = topY + 12;   // tercera línea
+const dataBlockHeight = dataBlockBottom - dataBlockTop;
+
+// Tamaño del logo (más cuadrado)
+const logoW = 40;
+const logoH = 40;
+
+// Logo centrado verticalmente con el bloque de datos
+const logoX = 140; // mueve a la derecha/izquierda si quieres
+const logoY = dataBlockTop + (dataBlockHeight - logoH) / 2;
+
+try {
+  const logoDataUrl = await fetch("assets/logo.jpg")
+    .then(r=>r.blob())
+    .then(blob => new Promise((resolve)=>{
+      const fr = new FileReader();
+      fr.onload = ()=> resolve(fr.result);
+      fr.readAsDataURL(blob);
+    }));
+  doc.addImage(logoDataUrl, "JPEG", logoX, logoY, logoW, logoH);
+} catch (e) {}
+
 
   // Logo a la derecha (assets/logo.jpg)
   try {
