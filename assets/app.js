@@ -498,15 +498,105 @@ document.getElementById("btnClearQuote").addEventListener("click", ()=>{
   renderQuote();
 });
 
-document.getElementById("quoteProductSearch").addEventListener("keydown", (e)=>{
-  if (e.key !== "Enter") return;
-  e.preventDefault();
-  const q = e.target.value.trim().toUpperCase();
-  if (!q) return;
-  const prod = state.products.find(p => (p.codigo||"").toUpperCase().includes(q) || (p.descripcion||"").toUpperCase().includes(q));
-  if (!prod) return toast("No se encontró producto", "warning");
-  addProductToQuote(prod, 1);
-  e.target.value = "";
+const quoteProductSearchEl = document.getElementById("quoteProductSearch");
+const quoteProductSuggestionsEl = document.getElementById("quoteProductSuggestions");
+
+function getQuoteProductMatches(q) {
+  const query = (q || "").trim().toUpperCase();
+  if (!query) return [];
+
+  return state.products
+    .map(p=>{
+      const code = (p.codigo || "").toUpperCase();
+      const desc = (p.descripcion || "").toUpperCase();
+      const score =
+        (code.startsWith(query) ? 0 : code.includes(query) ? 1 : 9) +
+        (desc.includes(query) ? 0 : 5);
+      return { p, score };
+    })
+    .filter(x =>
+      (x.p.codigo || "").toUpperCase().includes(query) ||
+      (x.p.descripcion || "").toUpperCase().includes(query)
+    )
+    .sort((a,b)=> a.score - b.score)
+    .slice(0, 10)
+    .map(x=>x.p);
+}
+
+function renderQuoteProductSuggestions(q) {
+  if (!quoteProductSuggestionsEl) return;
+
+  const items = getQuoteProductMatches(q);
+  if (!items.length) {
+    quoteProductSuggestionsEl.classList.add("d-none");
+    quoteProductSuggestionsEl.innerHTML = "";
+    return;
+  }
+
+  quoteProductSuggestionsEl.innerHTML = items.map(p=>{
+    const code = escapeHtml(p.codigo || "");
+    const desc = escapeHtml(p.descripcion || "");
+    return `<button type="button"
+                    class="list-group-item list-group-item-action py-1"
+                    data-code="${code}">
+      <div class="d-flex justify-content-between align-items-center gap-2">
+        <div><strong>${code}</strong> — ${desc}</div>
+        <span class="badge text-bg-light">Stock: ${safeNum(p.stock)}</span>
+      </div>
+    </button>`;
+  }).join("");
+
+  quoteProductSuggestionsEl.classList.remove("d-none");
+}
+
+function hideQuoteProductSuggestions() {
+  if (!quoteProductSuggestionsEl) return;
+  quoteProductSuggestionsEl.classList.add("d-none");
+}
+
+if (quoteProductSearchEl) {
+  quoteProductSearchEl.addEventListener("input", (e)=>{
+    renderQuoteProductSuggestions(e.target.value);
+  });
+
+  quoteProductSearchEl.addEventListener("keydown", (e)=>{
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const items = getQuoteProductMatches(e.target.value);
+      const prod = items[0];
+      if (!prod) return toast("No se encontró producto", "warning");
+      addProductToQuote(prod, 1);
+      e.target.value = "";
+      hideQuoteProductSuggestions();
+      return;
+    }
+    if (e.key === "Escape") {
+      hideQuoteProductSuggestions();
+    }
+  });
+}
+
+if (quoteProductSuggestionsEl) {
+  // mousedown: selecciona antes de perder foco
+  quoteProductSuggestionsEl.addEventListener("mousedown", (e)=>{
+    const btn = e.target.closest("button[data-code]");
+    if (!btn) return;
+    e.preventDefault();
+    const code = btn.dataset.code;
+    const prod = state.products.find(p => (p.codigo || "") === code);
+    if (!prod) return;
+    addProductToQuote(prod, 1);
+    if (quoteProductSearchEl) quoteProductSearchEl.value = "";
+    hideQuoteProductSuggestions();
+  });
+}
+
+// Cierra sugerencias al hacer click fuera
+document.addEventListener("click", (e)=>{
+  if (!quoteProductSuggestionsEl || !quoteProductSearchEl) return;
+  if (e.target === quoteProductSearchEl) return;
+  if (e.target.closest("#quoteProductSuggestions")) return;
+  hideQuoteProductSuggestions();
 });
 
 document.getElementById("quoteClientSearch").addEventListener("keydown", (e)=>{
