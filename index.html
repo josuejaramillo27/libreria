@@ -211,7 +211,16 @@
           <div class="card-body">
             <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between">
               <div class="flex-grow-1">
-                <input id="quoteProductSearch" class="form-control form-control-sm" placeholder="Agregar producto (código o descripción)" />
+                <div class="position-relative">
+  <input id="quoteProductSearch"
+         class="form-control form-control-sm"
+         placeholder="Agregar producto (código o descripción)"
+         autocomplete="off" />
+  <div id="quoteProductSuggestions"
+       class="list-group shadow-sm d-none"
+       style="position:absolute; z-index:1050; left:0; right:0; top:100%; margin-top:4px; max-height:240px; overflow:auto;">
+  </div>
+</div>
                 <div class="small text-secondary mt-1">Tip: escribe “PROD_00..” o parte de la descripción. Enter para agregar el primero.</div>
               </div>
             </div>
