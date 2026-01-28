@@ -396,7 +396,11 @@ function renderQuote() {
         <td class="text-end"><input class="form-control form-control-sm text-end" type="number" step="1" min="1" data-idx="${idx}" data-k="qty" value="${it.qty}"></td>
         <td class="text-end"><input class="form-control form-control-sm text-end" type="text" inputmode="decimal" data-idx="${idx}" data-k="unitPrice" value="${(it.unitPriceRaw ?? formatPriceInput(it.unitPrice))}"></td>
         <td class="text-end">${money(subtotal)}</td>
-        <td class="text-end"><button class="btn btn-outline-danger btn-sm" data-act="rm-quote" data-idx="${idx}">✕</button></td>
+        <td class="text-end">
+  <button class="btn btn-outline-secondary btn-sm me-1" data-act="up-quote" data-idx="${idx}" title="Subir">↑</button>
+  <button class="btn btn-outline-secondary btn-sm me-1" data-act="down-quote" data-idx="${idx}" title="Bajar">↓</button>
+  <button class="btn btn-outline-danger btn-sm" data-act="rm-quote" data-idx="${idx}" title="Eliminar">✕</button>
+</td>
       </tr>
     `;
   }).join("");
@@ -444,11 +448,35 @@ document.getElementById("quoteTbody").addEventListener("input", (e)=>{
 document.getElementById("view-cotizacion").addEventListener("click", (e)=>{
   const btn = e.target.closest("button[data-act]");
   if (!btn) return;
-  if (btn.dataset.act === "rm-quote") {
-    const idx = Number(btn.dataset.idx);
-    state.quote.items.splice(idx,1);
+
+  const act = btn.dataset.act;
+  const idx = Number(btn.dataset.idx);
+  if (!Number.isFinite(idx)) return;
+
+  // Eliminar
+  if (act === "rm-quote") {
+    state.quote.items.splice(idx, 1);
     renderQuote();
     toast("Item eliminado", "warning");
+    return;
+  }
+
+  // Subir
+  if (act === "up-quote") {
+    if (idx <= 0) return;
+    [state.quote.items[idx - 1], state.quote.items[idx]] =
+      [state.quote.items[idx], state.quote.items[idx - 1]];
+    renderQuote();
+    return;
+  }
+
+  // Bajar
+  if (act === "down-quote") {
+    if (idx >= state.quote.items.length - 1) return;
+    [state.quote.items[idx], state.quote.items[idx + 1]] =
+      [state.quote.items[idx + 1], state.quote.items[idx]];
+    renderQuote();
+    return;
   }
 });
 
