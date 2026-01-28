@@ -397,6 +397,12 @@ function renderQuote() {
         <td class="text-end"><input class="form-control form-control-sm text-end" type="text" inputmode="decimal" data-idx="${idx}" data-k="unitPrice" value="${(it.unitPriceRaw ?? formatPriceInput(it.unitPrice))}"></td>
         <td class="text-end">${money(subtotal)}</td>
         <td class="text-end">
+        <button class="btn btn-outline-secondary btn-sm me-1 drag-handle"
+        draggable="true"
+        data-idx="${idx}"
+        title="Arrastrar">
+  ≡
+</button>
   <button class="btn btn-outline-secondary btn-sm me-1" data-act="up-quote" data-idx="${idx}" title="Subir">↑</button>
   <button class="btn btn-outline-secondary btn-sm me-1" data-act="down-quote" data-idx="${idx}" title="Bajar">↓</button>
   <button class="btn btn-outline-danger btn-sm" data-act="rm-quote" data-idx="${idx}" title="Eliminar">✕</button>
@@ -445,39 +451,41 @@ document.getElementById("quoteTbody").addEventListener("input", (e)=>{
 
 
 
-document.getElementById("view-cotizacion").addEventListener("click", (e)=>{
-  const btn = e.target.closest("button[data-act]");
-  if (!btn) return;
+let dragFromIndex = null;
 
-  const act = btn.dataset.act;
-  const idx = Number(btn.dataset.idx);
-  if (!Number.isFinite(idx)) return;
+document.getElementById("view-cotizacion").addEventListener("dragstart", (e)=>{
+  const handle = e.target.closest(".drag-handle");
+  if (!handle) return;
 
-  // Eliminar
-  if (act === "rm-quote") {
-    state.quote.items.splice(idx, 1);
-    renderQuote();
-    toast("Item eliminado", "warning");
-    return;
-  }
+  dragFromIndex = Number(handle.dataset.idx);
+  e.dataTransfer.effectAllowed = "move";
+});
 
-  // Subir
-  if (act === "up-quote") {
-    if (idx <= 0) return;
-    [state.quote.items[idx - 1], state.quote.items[idx]] =
-      [state.quote.items[idx], state.quote.items[idx - 1]];
-    renderQuote();
-    return;
-  }
+document.getElementById("view-cotizacion").addEventListener("dragover", (e)=>{
+  if (dragFromIndex === null) return;
+  e.preventDefault(); // necesario para permitir drop
+  e.dataTransfer.dropEffect = "move";
+});
 
-  // Bajar
-  if (act === "down-quote") {
-    if (idx >= state.quote.items.length - 1) return;
-    [state.quote.items[idx], state.quote.items[idx + 1]] =
-      [state.quote.items[idx + 1], state.quote.items[idx]];
-    renderQuote();
-    return;
-  }
+document.getElementById("view-cotizacion").addEventListener("drop", (e)=>{
+  if (dragFromIndex === null) return;
+
+  const row = e.target.closest("tr");
+  if (!row) return;
+
+  const toIdx = Number(row.dataset.idx);
+  if (!Number.isFinite(toIdx) || toIdx === dragFromIndex) return;
+
+  const items = state.quote.items;
+  const [moved] = items.splice(dragFromIndex, 1);
+  items.splice(toIdx, 0, moved);
+
+  dragFromIndex = null;
+  renderQuote();
+});
+
+document.getElementById("view-cotizacion").addEventListener("dragend", ()=>{
+  dragFromIndex = null;
 });
 
 function calcUnitPrice(prod, qty) {
