@@ -1,0 +1,60 @@
+{
+  "pricing": {
+    "currency_symbol": "S/",
+    "igv_rate": 0.0,
+    "igv_included": true,
+    "global_discount_pct": 0.0,
+    "default_margin_pct": 0.0,
+    "apply_wholesale_tier": true,
+    "apply_dozen_tier": true,
+    "ignore_anomalous_wholesale_above_unit_ratio": 1.8,
+    "price_rounding": 0.05,
+    "product_price_overrides": {},
+    "category_markups_pct": {}
+  },
+  "matching": {
+    "min_match_score": 60.0,
+    "exact_match_score": 88.0,
+    "illegible_min_alpha_ratio": 0.35,
+    "illegible_min_length": 3,
+    "synonyms": {
+      "boligrafo": ["lapicero", "esfero", "birome", "pluma"],
+      "cuaderno": ["libreta", "cuadernillo"],
+      "cola": ["goma", "pegamento", "adhesivo", "goma liquida"],
+      "borrador": ["goma de borrar"],
+      "tajador": ["sacapuntas", "afilador"],
+      "plumon": ["marcador", "rotulador", "resaltador"],
+      "colores": ["lapices de color", "lapices de colores", "caja de colores"],
+      "crayones": ["crayolas", "cera"],
+      "tempera": ["temperas", "pintura escolar"],
+      "plastilina": ["masa moldeable"],
+      "hoja bond": ["papel bond", "hojas bond", "resma"],
+      "papel lustre": ["papel luster"],
+      "cinta masking": ["masking tape", "cinta de papel", "cinta maskin"],
+      "cinta embalaje": ["cinta de embalaje", "cinta adhesiva", "scotch"],
+      "archivador": ["archivero", "palanca"],
+      "folder": ["carpeta", "foulder", "pioner"],
+      "triple renglon": ["triple raya", "3 renglones", "3 rayas"],
+      "cuadriculado": ["cuadricula", "cuadros"],
+      "rayado": ["raya", "lineas"],
+      "chico": ["pequeno", "pequena", "mini"],
+      "grande": ["jumbo", "grueso"],
+      "tijera": ["tijeras"],
+      "silicona": ["silicón", "silicona liquida"]
+    },
+    "brand_equivalences": {
+      "artesco": ["faber castell", "layconsa", "ove"],
+      "faber castell": ["artesco", "stabilo", "layconsa"],
+      "conti": ["justus", "college", "el parque", "standford"],
+      "justus": ["conti", "college", "standford"],
+      "el parque": ["vikingo", "justus", "faber castell"],
+      "pegafan": ["3m", "scotch"]
+    },
+    "substitutions": {
+      "PROD_0001": ["PROD_0002"],
+      "PROD_0009": ["PROD_0010"],
+      "PROD_0086": ["PROD_0085", "PROD_0082"]
+    },
+    "term_to_code": {}
+  }
+}
